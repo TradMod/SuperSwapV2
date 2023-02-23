@@ -21,6 +21,8 @@ contract SuperSwapV2Pair is SuperSwapV2 {
     address public tokenX;
     address public tokenY;
 
+    address public factory;
+
     bool private lock;
 
     modifier reentrancyLock {
@@ -35,7 +37,12 @@ contract SuperSwapV2Pair is SuperSwapV2 {
     event Burn(address indexed LiquidityProvider, uint256 indexed Liquidity);
     event ReservesUpdate(uint112 indexed ReserveX, uint112 indexed ReserveY, uint32 lastBlockTimestamp);
 
-    constructor(address _tokenX, address _tokenY) {
+    constructor() {
+        factory = msg.sender;
+    }
+
+    function initialize(address _tokenX, address _tokenY) public {
+        require(msg.sender == factory, "Only Factory allowed");
         tokenX = _tokenX;
         tokenY = _tokenY;
     }
