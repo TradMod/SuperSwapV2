@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import {ISuperSwapV2Pair} from "../core/./Interfaces/ISuperSwapV2Pair.sol";
+import {IERC20} from "../core/Interfaces/IERC20.sol";
 import {SuperSwapV2Library} from "./libraries/SuperSwapV2Library.sol";
 import {ISuperSwapV2Factory} from "./Interfaces/ISuperSwapV2Factory.sol";
+import {ISuperSwapV2Pair} from "../core/./Interfaces/ISuperSwapV2Pair.sol";
 
 contract SuperSwapV2Router {
 
@@ -46,6 +47,23 @@ contract SuperSwapV2Router {
         _safeTransferFrom(tokenB, msg.sender, pair, amountB);
 
         liquidity = ISuperSwapV2Pair(pair).mint(to);
+    }
+
+    function removeLiquidity(
+            address tokenA,
+            address tokenB,
+            uint256 liquidity,
+            uint256 amountAmin,
+            uint256 amountBmin,
+            address to
+        ) public {
+        require(ISuperSwapV2Factory(factory).getPair(tokenA, tokenB) != address(0), "Tokens pair not exists");
+
+        address pair = SuperSwapV2Library.pairFor(address(factory), tokenA, tokenB);
+        IERC20(pair).transferFrom(msg.sender, pair, liquidity);
+        (uint256 amountA, uint256 amountB) = ISuperSwapV2Pair(pair).burn(to);
+
+        require(amountA >= amountAmin && amountB >= amountBmin, "Insufficient Amounts");
     }
 
     function calculateLiquidity(

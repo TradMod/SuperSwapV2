@@ -13,4 +13,6 @@ interface ISuperSwapV2Pair {
         );
 
     function mint(address) external returns (uint256);
+
+    function burn(address) external returns (uint256, uint256);
 }

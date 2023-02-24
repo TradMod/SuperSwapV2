@@ -75,13 +75,13 @@ contract SuperSwapV2Pair is SuperSwapV2 {
         return liquidity;
     }
 
-    function burn(address to) public reentrancyLock {
+    function burn(address to) public reentrancyLock returns(uint256 amountX, uint256 amountY) {
         uint256 balanceX = IERC20(tokenX).balanceOf(address(this));
         uint256 balanceY = IERC20(tokenY).balanceOf(address(this));
         uint256 liquidity = balanceOf[msg.sender];
 
-        uint256 amountX = (balanceX * liquidity) / totalSupply;
-        uint256 amountY = (balanceY * liquidity) / totalSupply;
+        amountX = (balanceX * liquidity) / totalSupply;
+        amountY = (balanceY * liquidity) / totalSupply;
 
         require(amountX > 0 && amountY > 0, "Insufficient Liquidity Burned");
 
@@ -96,6 +96,8 @@ contract SuperSwapV2Pair is SuperSwapV2 {
         updateResrves(balanceX, balanceY);
 
         emit Burn(to, liquidity);
+
+        return (amountX, amountY);
     }
 
     function swap(address to, uint256 amountAout, uint256 amountBout) public reentrancyLock {
