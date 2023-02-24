@@ -47,7 +47,7 @@ contract SuperSwapV2Pair is SuperSwapV2 {
         tokenY = _tokenY;
     }
 
-    function mint() public reentrancyLock {
+    function mint(address to) public reentrancyLock returns(uint256){
 
         uint256 balanceX = IERC20(tokenX).balanceOf(address(this));
         uint256 balanceY = IERC20(tokenY).balanceOf(address(this));
@@ -68,9 +68,11 @@ contract SuperSwapV2Pair is SuperSwapV2 {
 
         updateResrves(balanceX, balanceY);
 
-        _mint(msg.sender, liquidity);
+        _mint(to, liquidity);
 
-        emit Mint(msg.sender, liquidity);
+        emit Mint(to, liquidity);
+
+        return liquidity;
     }
 
     function burn(address to) public reentrancyLock {
