@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.19;
+pragma solidity ^0.8.7;
 
 import "forge-std/Test.sol";
 import "./mocks/MockERC20.sol";
@@ -14,7 +14,8 @@ contract SuperSwapV2PairTest is Test {
     function setUp() public {
         tokenX = new MockERC20("TokenX", "TX");
         tokenY = new MockERC20("TokenY", "TY");
-        pair = new SuperSwapV2Pair(address(tokenX), address(tokenY));
+        pair = new SuperSwapV2Pair();
+        pair.initialize(address(tokenX), address(tokenY));
 
         tokenX.mint(address(this), 10 ether);
         tokenY.mint(address(this), 10 ether);
@@ -78,10 +79,10 @@ contract SuperSwapV2PairTest is Test {
         vm.expectRevert("Insufficient Liquidity Minted");
     }
 
-    function testBurn() public {
-        testMint(); // +1
+    function testBurn(address to) public {
+        pair.mint(); // +1
 
-        pair.burn(); // -1
+        pair.burn(to); // -1
         assertEq(pair.balanceOf(address(this)), 0);
     }
 

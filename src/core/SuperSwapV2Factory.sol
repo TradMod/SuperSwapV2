@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.19;
+pragma solidity ^0.8.7;
 
 import {SuperSwapV2Pair} from "./SuperSwapV2Pair.sol";
 import {ISuperSwapV2Pair} from "./Interfaces/ISuperSwapV2Pair.sol";
