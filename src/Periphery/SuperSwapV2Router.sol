@@ -66,6 +66,73 @@ contract SuperSwapV2Router {
         require(amountA >= amountAmin && amountB >= amountBmin, "Insufficient Amounts");
     }
 
+    function swapExactTokensForTokens(
+        uint256 amountIn,
+        uint256 amountOutMin,
+        address[] calldata path,
+        address to
+    ) public returns (uint256[] memory amounts) {
+        amounts = SuperSwapV2Library.getAmountsOut(
+            address(factory),
+            amountIn,
+            path
+        );
+        require(amounts[amounts.length - 1] > amountOutMin, "Insufficient OutputAmount");
+        _safeTransferFrom(
+            path[0],
+            msg.sender,
+            SuperSwapV2Library.pairFor(address(factory), path[0], path[1]),
+            amounts[0]
+        );
+        _swap(amounts, path, to);
+    }
+
+    function swapTokensForExactTokens(
+        uint256 amountOut,
+        uint256 amountInMax,
+        address[] calldata path,
+        address to
+    ) public returns (uint256[] memory amounts) {
+        amounts = SuperSwapV2Library.getAmountsIn(
+            address(factory),
+            amountOut,
+            path
+        );
+        require(amounts[amounts.length - 1] < amountInMax, "Excessive InputAmount");
+        _safeTransferFrom(
+            path[0],
+            msg.sender,
+            SuperSwapV2Library.pairFor(address(factory), path[0], path[1]),
+            amounts[0]
+        );
+        _swap(amounts, path, to);
+    }
+
+    function _swap(
+        uint256[] memory amounts,
+        address[] memory path,
+        address to_
+    ) internal {
+        for (uint256 i; i < path.length - 1; i++) {
+            (address input, address output) = (path[i], path[i + 1]);
+            (address tokenX, ) = SuperSwapV2Library.sortTokens(input, output);
+            uint256 amountOut = amounts[i + 1];
+            (uint256 amountXout, uint256 amountYout) = input == tokenX
+                ? (uint256(0), amountOut)
+                : (amountOut, uint256(0));
+            address to = i < path.length - 2
+                ? SuperSwapV2Library.pairFor(
+                    address(factory),
+                    output,
+                    path[i + 2]
+                )
+                : to_;
+            ISuperSwapV2Pair(
+                SuperSwapV2Library.pairFor(address(factory), input, output)
+            ).swap(to, amountXout, amountYout, "");
+        }
+    }
+
     function calculateLiquidity(
         address tokenA,
         address tokenB,

@@ -15,4 +15,6 @@ interface ISuperSwapV2Pair {
     function mint(address) external returns (uint256);
 
     function burn(address) external returns (uint256, uint256);
+
+    function swap(address, uint256, uint256, bytes calldata) external;
 }

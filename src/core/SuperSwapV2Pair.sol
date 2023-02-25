@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.7;
 
+import {ISuperSwapV2Callee} from "./Interfaces/ISuperSwapV2Callee.sol";
 import {SuperSwapV2} from "./SuperSwapV2.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {IERC20} from "./Interfaces/IERC20.sol";
@@ -32,7 +33,9 @@ contract SuperSwapV2Pair is SuperSwapV2 {
         lock = false;
     }
 
-    event Swap(address Swapper, uint256 AmountAout, uint256 AmountBout);
+    error InvalidK();
+
+    event Swap(address Swapper, uint256 AmountAout, uint256 AmountBout, address to);
     event Mint(address indexed LiquidityProvider, uint256 indexed Liquidity);
     event Burn(address indexed LiquidityProvider, uint256 indexed Liquidity);
     event ReservesUpdate(uint112 indexed ReserveX, uint112 indexed ReserveY, uint32 lastBlockTimestamp);
@@ -100,21 +103,34 @@ contract SuperSwapV2Pair is SuperSwapV2 {
         return (amountX, amountY);
     }
 
-    function swap(address to, uint256 amountAout, uint256 amountBout) public reentrancyLock {
-        require(amountAout > 0 || amountBout > 0, "Insufficient amount inputs");
-        require(amountAout < reserveX || amountBout < reserveY, "Insufficient Liquidity");
 
-        uint256 balanceX = IERC20(tokenX).balanceOf(address(this)) - amountAout;
-        uint256 balanceY = IERC20(tokenY).balanceOf(address(this)) - amountBout;
+    function swap(uint256 amountXOut, uint256 amountYOut, address to, bytes calldata data ) public reentrancyLock {
+        require(amountXOut > 0 && amountYOut > 0, "Insufficient OutputAmount");
 
-        require(balanceX * balanceY > reserveX * reserveY, "!K: No Tokens sent");
+        (uint112 reserveX_, uint112 reserveY_, ) = getReserves();
+
+        require(amountXOut < reserveX_ && amountYOut < reserveY, "Insufficient Liquidity");
+
+        if (amountXOut > 0) _safeTransfer(tokenX, to, amountXOut);
+        if (amountYOut > 0) _safeTransfer(tokenY, to, amountYOut);
+        if (data.length > 0) ISuperSwapV2Callee(to).superSwapV2Call(msg.sender, amountXOut, amountYOut, data );
+
+        uint256 balanceX = IERC20(tokenX).balanceOf(address(this));
+        uint256 balanceY = IERC20(tokenY).balanceOf(address(this));
+
+        uint256 amountXIn = balanceX > reserveX - amountXOut ? balanceX - (reserveX - amountXOut) : 0;
+        uint256 amountYIn = balanceY > reserveY - amountYOut ? balanceY - (reserveY - amountYOut) : 0;
+
+        require(amountXIn > 0 && amountYIn > 0, "InsufficientInputAmount");
+
+        uint256 balanceXAdjusted = (balanceX * 1000) - (amountXIn * 5);
+        uint256 balanceYAdjusted = (balanceY * 1000) - (amountYIn * 5);
+
+        if (balanceXAdjusted * balanceYAdjusted < uint256(reserveX_) * uint256(reserveY_) * (1000**2) ) revert InvalidK();
 
         updateResrves(balanceX, balanceY);
 
-        if (amountAout > 0) _safeTransfer(tokenX, to, amountAout);
-        if (amountBout > 0) _safeTransfer(tokenY, to, amountBout);
-
-        emit Swap(to, amountAout, amountBout);
+        emit Swap(msg.sender, amountXOut, amountYOut, to);
     }
 
     function calculate(uint256 inputAmountA, uint256 reserveA, uint256 reserveB) internal pure returns(uint256 outputAmountB){
@@ -149,8 +165,8 @@ contract SuperSwapV2Pair is SuperSwapV2 {
         emit ReservesUpdate(reserveX, reserveY, uint32(block.timestamp));
     }
 
-    function getReserves() public view returns(uint112, uint112){
-        return (reserveX, reserveY);
+    function getReserves() public view returns(uint112, uint112, uint32){
+        return (reserveX, reserveY, lastBlockTimestamp);
     }
 
     function _safeTransfer(address token, address to, uint256 value) private {
